@@ -1,4 +1,4 @@
-export type TabType = 'orders' | 'profiles';
+export type TabType = 'orders' | 'profiles' | 'map';
 export type SortOption = 'date' | 'price_asc' | 'price_desc' | 'rating' | 'distance';
 
 export interface GeoPoint {

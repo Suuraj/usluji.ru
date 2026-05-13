@@ -9,6 +9,7 @@ import { ProfileEditor } from './components/features/ProfileEditor';
 import { OrderPage } from './components/features/OrderPage';
 import { PublicProfile } from './components/features/PublicProfile';
 import { CreateOrder } from './components/features/CreateOrder';
+import { MapPage } from './components/features/MapPage';
 import { api } from './api';
 
 export default function App() {
@@ -28,7 +29,7 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
-  const activeTab: TabType = path.startsWith('/orders') ? 'orders' : 'profiles';
+  const activeTab: TabType = path.startsWith('/orders') ? 'orders' : path.startsWith('/map') ? 'map' : 'profiles';
 
   const [searchQuery, setSearchQuery] = useState('');
   const [sortConfig, setSortConfig] = useState<{
@@ -43,18 +44,25 @@ export default function App() {
     localStorage.setItem('sort_config', JSON.stringify(sortConfig));
   }, [sortConfig]);
 
-  const currentSort = sortConfig[activeTab];
+  const currentSort = activeTab === 'map' ? 'date' : sortConfig[activeTab];
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
 
   useEffect(() => {
-    const isMainList = path === '/orders' || path === '/profiles';
+    const isMainList = path === '/orders' || path === '/profiles' || path === '/map';
     if (!isMainList) return;
 
     const fetchData = async () => {
       try {
-        if (activeTab === 'orders') {
+        if (activeTab === 'map') {
+          const [o, p] = await Promise.all([
+            api.getOrders({ lat: 55.75, lng: 37.61, radius: 50000 }),
+            api.getProfiles({ lat: 55.75, lng: 37.61, radius: 50000 })
+          ]);
+          setOrders(o || []);
+          setProfiles(p || []);
+        } else if (activeTab === 'orders') {
           const data = await api.getOrders({
             lat: 55.75,
             lng: 37.61,
@@ -116,10 +124,20 @@ export default function App() {
       return (
         <DataGrid
           data={filteredData}
-          type={activeTab}
+          type={activeTab as 'orders' | 'profiles'}
           onReset={() => setSearchQuery('')}
           onOrderClick={(orderId) => navigate(`/order/${orderId}`)}
           onProfileClick={(profileId) => navigate(`/profile/${profileId}`)}
+        />
+      );
+    }
+
+    if (path === '/map') {
+      return (
+        <MapPage
+          orders={orders}
+          profiles={profiles}
+          searchQuery={searchQuery}
         />
       );
     }
@@ -165,7 +183,7 @@ export default function App() {
     );
   };
 
-  const isMainPage = path === '/orders' || path === '/profiles';
+  const isMainPage = path === '/orders' || path === '/profiles' || path === '/map';
 
   return (
     <div className='min-h-screen bg-stone-50 pb-24 font-sans text-stone-900 transition-colors dark:bg-stone-950 dark:text-stone-200'>
@@ -183,7 +201,7 @@ export default function App() {
         <Navigation
           activeTab={activeTab}
           setActiveTab={(t) =>
-            navigate(t === 'orders' ? '/orders' : '/profiles')
+            navigate(t === 'orders' ? '/orders' : t === 'map' ? '/map' : '/profiles')
           }
           sortBy={currentSort}
           setSortBy={(newSort) =>
